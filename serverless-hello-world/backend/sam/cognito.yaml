@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Organization and Member Management
+
+Parameters:
+  Domain:
+    Type: String
+    Description: Domain to create for this application, must be a member of the provided ZoneId
+  UserPool:
+    Type: String
+    Description: The name of the Shared stack you deployed for the serverless learning resources
+
+Resources:
+  Client:
+    Type: AWS::Cognito::UserPoolClient
+    Properties: 
+      AllowedOAuthFlows: 
+        - code
+      AllowedOAuthFlowsUserPoolClient: True
+      AllowedOAuthScopes: 
+        - openid
+        - email
+        - profile
+      CallbackURLs: # If you are doing local development make sure you go back in and add localhost to the client
+        - !Sub "https://${Domain}/api/oauth/callback" #These are defined in the backend OAuthHelperFunction
+      ClientName: !Sub "HelloWorldClient"
+      EnableTokenRevocation: True
+      ExplicitAuthFlows: 
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      GenerateSecret: True
+      LogoutURLs:
+        - !Sub "https://${Domain}/api/oauth/logout" #These are defined in the backend OAuthHelperFunction
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders: 
+        - COGNITO
+      UserPoolId: !Ref UserPool
+      WriteAttributes: 
+        - family_name
+        - given_name
+        - picture
+        - profile
+
+Outputs:
+  Client:
+    Value: !Ref Client

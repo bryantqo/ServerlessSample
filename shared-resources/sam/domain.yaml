@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Organization and Member Management
+
+Parameters:
+  ZoneId:
+    Type: String
+    Description: Zone ID in route 53 for creating domain names
+    Default: none
+  Domain:
+    Type: String
+    Description: Domain to create for this application, must be a member of the provided ZoneId
+
+Resources:
+  # Creates a record set in the hosted zone for the domain
+  DomainRecordSet: 
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Name: !Sub '${Domain}'
+      HostedZoneId: !Ref ZoneId
+      ResourceRecords:
+        - "127.0.0.1"
+      TTL: 900
+      Type: A
+
+    # Creates an ssl cert for use with our application
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub '${Domain}'
+      SubjectAlternativeNames: 
+        - !Sub '*.${Domain}'
+      ValidationMethod: DNS
+      DomainValidationOptions: 
+        - DomainName: !Sub '${Domain}'
+          HostedZoneId: !Ref ZoneId
+
+
+Outputs:
+  Certificate:
+    Value: !Ref Certificate

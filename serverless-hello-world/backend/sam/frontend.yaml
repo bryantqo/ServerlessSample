@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Utah Fire History Tracker Frontend
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: Domian name for api
+  S3BasePath:
+    Type: String
+    Description: Base path to the site in S3 (Leave it blank if it is the only app in the bucket, include trailing slash i.e. some/path/ )
+    Default: omm/
+  S3Bucket:
+    Type: String
+  MappingPath:
+    Type: String
+
+Resources:
+           
+  StaticMapping: # Creates the mapping for Reporting V1
+    Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn: StaticApiGatewayDefaultStage
+    Properties: 
+      ApiId: !Ref Static
+      ApiMappingKey: !Ref MappingPath
+      DomainName: !Ref DomainName
+      Stage: $default
+
+  Static: # Reporting V1 endpoint
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Description: !Sub "${DomainName} - Static Web"
+      DefinitionBody:
+        openapi: "3.0.1"
+        info:
+          title: !Sub "${DomainName} Static web hosting"
+        paths:
+          /:
+            get:
+              responses:
+                default:
+                  description: "Default response for GET /"
+              x-amazon-apigateway-integration:
+                requestParameters:
+                  overwrite:header.Accept: "application/json"
+                payloadFormatVersion: "1.0"
+                type: "http_proxy"
+                httpMethod: "ANY"
+                uri: 
+                  !Sub "http://${S3Bucket}.s3-website-us-east-1.amazonaws.com/${S3BasePath}/"
+                  
+                connectionType: "INTERNET"
+          /{proxy+}:
+            get:
+              responses:
+                default:
+                  description: "Default response for GET /"
+              x-amazon-apigateway-integration:
+                payloadFormatVersion: "1.0"
+                type: "http_proxy"
+                httpMethod: "ANY"
+                uri: 
+                  !Sub "http://${S3Bucket}.s3-website-us-east-1.amazonaws.com/${S3BasePath}/{proxy}"
+                connectionType: "INTERNET"
+        x-amazon-apigateway-importexport-version: "1.0"

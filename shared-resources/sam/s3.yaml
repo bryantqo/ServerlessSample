@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Organization and Member Management
+
+Parameters:
+  Domain:
+    Type: String
+    Description: Domain to create for this application, must be a member of the provided ZoneId
+
+Resources:
+  Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'static.${Domain}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+        
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Statement:
+          - Sid: "AllowDeploy"
+            Action:
+              - 's3:GetObject'
+              - 's3:GetObjectVersion'
+              - 's3:PutObject'
+              - 's3:PutObjectAcl'
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${Bucket}/*'
+            Principal:
+              AWS: !Sub 'arn:aws:iam::930156663175:root'
+          - Sid: "AllowDeploy"
+            Action:
+              - 's3:*'
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${Bucket}/*'
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          - Sid: "AllowPublicReadForStatic"
+            Action:
+              - 's3:GetObject'
+            Effect: Allow
+            Principal: "*"
+            Resource: !Sub 'arn:aws:s3:::${Bucket}/*'
+
+
+Outputs:
+  Bucket:
+    Value: !Ref Bucket

@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Organization and Member Management
+
+Parameters:
+  ZoneId:
+    Type: String
+    Description: Zone ID in route 53 for creating domain names
+    Default: none
+  SharedServerlessStackName:
+    Type: String
+    Description: The name of the Shared stack you deployed for the serverless learning resources
+
+Resources:
+
+
+  # Creates a record set in the hosted zone for the domain
+  DomainRecordSet: 
+    Type: AWS::Route53::RecordSet
+    Properties:
+      Name: 
+        !Sub 
+          - 'hello.${Domain}'
+          - Domain:
+              Fn::ImportValue: !Sub '${SharedServerlessStackName}-Domain'
+      HostedZoneId: !Ref ZoneId
+      AliasTarget: 
+        DNSName: !GetAtt GatewayDomainName.RegionalDomainName
+        HostedZoneId: !GetAtt GatewayDomainName.RegionalHostedZoneId
+      Type: A
+
+  # Creates a domain name for our api gateway
+  GatewayDomainName: # Creates the domain name
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: 
+        !Sub 
+          - 'hello.${Domain}'
+          - Domain:
+              Fn::ImportValue: !Sub '${SharedServerlessStackName}-Domain'
+      DomainNameConfigurations: 
+        - EndpointType: REGIONAL
+          CertificateArn: 
+            Fn::ImportValue: !Sub '${SharedServerlessStackName}-Certificate'
+
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  # Cognito
+  # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+  CognitoApp:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./cognito.yaml
+      Parameters:
+        Domain: !Ref GatewayDomainName
+        UserPool:
+          Fn::ImportValue: !Sub '${SharedServerlessStackName}-UserPool'
+
+  StaticHostingApp:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./frontend.yaml
+      Parameters:
+        DomainName: !Ref GatewayDomainName
+        S3Bucket:
+          Fn::ImportValue: !Sub '${SharedServerlessStackName}-Bucket'
+        S3BasePath: "hello"
+        MappingPath: ""
+
+  DatabaseApp:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./database.yaml
+
+  RestApiApp:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./backend.yaml
+      Parameters:
+        DomainName: !Ref GatewayDomainName
+        UserPoolId: 
+            Fn::ImportValue: !Sub '${SharedServerlessStackName}-UserPool'
+        ClientID: !GetAtt CognitoApp.Outputs.Client
+        DynamoDbTable: !GetAtt DatabaseApp.Outputs.DynamoDbTable
+      

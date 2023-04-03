@@ -1,0 +1,43 @@
+{
+  "name": "actiontracker-backend-webpack",
+  "version": "0.12.4",
+  "description": "Action Tracker Backend Unit Tests",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon --experimental-modules --es-module-specifier-resolution=node local-dev.js --watch ../src --watch local-dev.js --watch ../sam/backend.yaml"
+  },
+  "keywords": [
+    "SAM",
+    "Webpack",
+    "Lambda",
+    "Serverless"
+  ],
+  "author": "Bryant Overgard",
+  "license": "ISC",
+  "devDependencies": {
+    "app-module-path": "^2.2.0",
+    "aws-sdk": "^2.1345.0",
+    "aws-sdk-mock": "^5.7.0",
+    "express": "^4.17.1",
+    "http-proxy-middleware": "^2.0.6",
+    "node-fetch": "^2.6.0",
+    "nodemon": "^2.0.20",
+    "request": "^2.88.0",
+    "uuid": "^9.0.0"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "**/test/**",
+      "**/docs/**"
+    ],
+    "watch": [
+      "../src",
+      "local-dev.js",
+      "../sam/backend.yaml"
+    ],
+    "delay": 250
+  }
+}

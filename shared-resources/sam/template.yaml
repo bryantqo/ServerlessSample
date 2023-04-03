@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Organization and Member Management
+
+Parameters:
+  ZoneId:
+    Type: String
+    Description: Zone ID in route 53 for creating domain names
+    Default: none
+  YourName:
+    Type: String
+    Description: Your name, without spaces, all lower case
+
+Resources:
+  DomainAndCert:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./domain.yaml
+      Parameters:
+        Domain: !Sub '${YourName}.learning-serverless.timmons-dev.com'
+        ZoneId: !Ref ZoneId
+
+  CognitoApp:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./cognito.yaml
+      Parameters:
+        Domain: !Sub '${YourName}.learning-serverless.timmons-dev.com'
+
+  BucketApp:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: ./s3.yaml
+      Parameters:
+        Domain: !Sub '${YourName}.learning-serverless.timmons-dev.com'
+
+Outputs:
+  DomainName:
+    Value: !Sub '${YourName}.learning-serverless.timmons-dev.com'
+    Export: 
+      Name: !Sub '${AWS::StackName}-Domain'
+  Certificate:
+    Export: 
+      Name: !Sub '${AWS::StackName}-Certificate'
+    Value: !GetAtt DomainAndCert.Outputs.Certificate
+  UserPool:
+    Export: 
+      Name: !Sub '${AWS::StackName}-UserPool'
+    Value: !GetAtt CognitoApp.Outputs.CognitoUserPool
+  AppBucket:
+    Export: 
+      Name: !Sub '${AWS::StackName}-Bucket'
+    Value: !GetAtt BucketApp.Outputs.Bucket

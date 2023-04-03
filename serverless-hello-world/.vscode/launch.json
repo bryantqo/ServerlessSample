@@ -1,0 +1,55 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Backend Emulation",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/backend/local-dev",
+            "stopOnEntry": true,
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run-script",
+                "start",
+                "--",
+                "--env",
+                "../sam/local.env",
+                "--samTemplate",
+                "../sam/backend.yaml"
+            ],
+            "env":{
+                "PORT": "3001"
+            },
+            "console": "integratedTerminal",
+            "outFiles": [
+                "${workspaceFolder}/**/*.js",
+                "!**/node_modules/**"
+            ]
+        },
+        {
+            "name": "Frontend",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/frontend",
+            "stopOnEntry": true,
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run-script",
+                "dev"
+            ],
+        },
+        {
+            "name": "Backend Tests",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/backend/src",
+            "stopOnEntry": true,
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run-script",
+                "test"
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}

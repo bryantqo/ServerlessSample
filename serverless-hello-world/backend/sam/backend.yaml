@@ -1,0 +1,185 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+Description: Serverless Hello World
+
+Parameters:
+  DomainName:
+    Type: String
+    Description: Domian name for api
+  UserPoolId:
+    Type: String
+    Description: The id of the user pool
+  ClientID:
+    Type: String
+    Description: Cognito client ID to use
+  DynamoDbTable:
+    Type: String
+    Description: DynamoDB table to use
+
+
+Globals:
+  Api:
+    BinaryMediaTypes:
+    - application~1octet-stream
+
+  Function:
+    Timeout: 60
+    Runtime: nodejs16.x 
+    Environment:
+      Variables:
+        POOL_ID: !Ref UserPoolId
+        CLIENT_ID: !Ref ClientID
+        DOMAIN: !Ref DomainName
+        DYNAMO_DB_TABLE: !Ref DynamoDbTable
+
+Resources:
+  APIMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    DependsOn: APIProdStage
+    Properties: 
+      ApiId: !Ref API
+      ApiMappingKey: api
+      DomainName: !Ref DomainName
+      Stage: Prod
+
+  API: # endpoint
+    Type: AWS::Serverless::Api
+    Properties:
+      Description: !Sub "Backend for ${DomainName}"
+      StageName: Prod
+      EndpointConfiguration:
+        Type: REGIONAL
+
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# IAM
+# ---------------------------------------------------------------------------------------------------------------------------
+  
+  
+  OAuthHelperRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  CognitoPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub 'AppCognitoAccess'
+      Roles:
+        - !Ref OAuthHelperRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - cognito-idp:AdminGetUser
+              - cognito-idp:AdminListGroupsForUser
+              - cognito-idp:DescribeUserPoolClient
+              - cognito-idp:DescribeUserPool
+            Resource:
+              - !Sub
+                - 'arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${PoolID}'
+                - PoolID: !Ref UserPoolId
+                
+
+# ---------------------------------------------------------------------------------------------------------------------------
+# Utility Funcs
+# ---------------------------------------------------------------------------------------------------------------------------
+
+  OAuthHelperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/oauth
+      Handler: oauth.handler
+      Events:
+        BaseRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref API
+            Path: /oauth/{proxy+}
+            Method: GET
+        BasePostRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref API
+            Path: /oauth/{proxy+}
+            Method: POST
+      Role: !GetAtt OAuthHelperRole.Arn
+
+  FooFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/foo
+      Handler: foo.handler
+      Events:
+        BaseRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref API
+            Path: /foo
+            Method: GET
+
+  GetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/count
+      Handler: count.handler
+      Events:
+        BaseRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref API
+            Path: /get
+            Method: GET
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoDbTable
+
+  IncrementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/count
+      Handler: increment.handler
+      Events:
+        BaseRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref API
+            Path: /increment
+            Method: POST
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoDbTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref DynamoDbTable
+
+  DecrementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/count
+      Handler: decrement.handler
+      Events:
+        BaseRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref API
+            Path: /decrement
+            Method: POST
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoDbTable
+        - DynamoDBWritePolicy:
+            TableName: !Ref DynamoDbTable
+  
